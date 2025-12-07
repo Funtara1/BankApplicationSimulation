@@ -33,15 +33,20 @@ public class Transaction {
     private LocalDateTime timestamp;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "from_account_id")
+    @JoinColumn(name = "from_account_id", nullable = true)
     private Account fromAccount;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "to_account_id")
+    @JoinColumn(name = "to_account_id", nullable = true)
     private Account toAccount;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "transaction_status")
     private TransactionStatus transactionStatus;
+
+    @PrePersist
+    public void prePersist() {
+        timestamp = LocalDateTime.now();
+    }
 }
 
