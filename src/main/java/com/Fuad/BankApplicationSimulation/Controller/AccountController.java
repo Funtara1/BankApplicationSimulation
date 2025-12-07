@@ -3,12 +3,12 @@ package com.Fuad.BankApplicationSimulation.Controller;
 import com.Fuad.BankApplicationSimulation.DTO.AccountDTO.RequestDTO.CreateAccountRequest;
 import com.Fuad.BankApplicationSimulation.Entity.Account;
 import com.Fuad.BankApplicationSimulation.Service.AccountService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -22,10 +22,9 @@ public class AccountController {
     @PostMapping("/customer/{fin}")
     public ResponseEntity<Account> createAccount(
             @PathVariable String fin,
-            @RequestBody CreateAccountRequest createAccountRequest) {
-
-        Account created = accountService.createForCustomer(fin, createAccountRequest);
-        return new ResponseEntity<>(created, HttpStatus.CREATED);
+            @Valid @RequestBody CreateAccountRequest createAccountRequest) {
+        Account createdAccount = accountService.createForCustomer(fin, createAccountRequest);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdAccount);
     }
 
     @GetMapping("/{id}")
@@ -33,14 +32,14 @@ public class AccountController {
         return ResponseEntity.ok(accountService.getById(id));
     }
 
-    @GetMapping("/")
+    @GetMapping
     public ResponseEntity<List<Account>> getAllAccounts() {
         return ResponseEntity.ok(accountService.getAllAccounts());
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteAccount(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteAccount(@PathVariable Long id) {
         accountService.delete(id);
-        return ResponseEntity.ok("Account successfully deleted");
+        return ResponseEntity.noContent().build();
     }
 }

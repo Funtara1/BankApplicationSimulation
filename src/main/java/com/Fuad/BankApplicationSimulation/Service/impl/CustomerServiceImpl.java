@@ -21,19 +21,23 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
-    public Customer createFromDTO(CreateCustomerRequest createCustomerRequest) {
-        Customer customer = Customer.builder()
+    public Customer createCustomer(CreateCustomerRequest createCustomerRequest) {
+        customerRepository.findByFinIgnoreCase(createCustomerRequest.getFin()).orElseThrow(() ->
+                new RuntimeException("Customer with FIN '" + createCustomerRequest.getFin() + "' already exists!"));
+
+       Customer customer = Customer.builder()
                 .name(createCustomerRequest.getName())
                 .surname(createCustomerRequest.getSurname())
                 .phoneNumber(createCustomerRequest.getPhoneNumber())
                 .address(createCustomerRequest.getAddress())
                 .fin(createCustomerRequest.getFin())
                 .build();
+
         return customerRepository.save(customer);
     }
 
     @Override
-    public Customer updateFromDTO(Long id, CreateCustomerRequest createCustomerRequest) {
+    public Customer updateCustomerById(Long id, CreateCustomerRequest createCustomerRequest) {
         Customer existing = getCustomerById(id);
         existing.setName(createCustomerRequest.getName());
         existing.setSurname(createCustomerRequest.getSurname());
@@ -41,15 +45,15 @@ public class CustomerServiceImpl implements CustomerService {
         existing.setAddress(createCustomerRequest.getAddress());
         existing.setFin(createCustomerRequest.getFin());
 
-
         return customerRepository.save(existing);
     }
 
     @Override
-    public String delete(Long id) {
+    public String deleteCustomerById(Long id) {
         Customer customer = getCustomerById(id);
         customerRepository.delete(customer);
-        return "Customer " + customer.getName() + " успешно удалён";
+
+        return "Customer " + customer.getName() + " has been deleted";
     }
 
     @Override

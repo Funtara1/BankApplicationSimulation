@@ -34,12 +34,14 @@ public class Customer {
     @Column(unique = true)
     private String fin;
 
-
     //orphanRemoval = true — удаляет счета, если они удалены из коллекции.
     //cascade = CascadeType.ALL — автоматически сохраняет/удаляет счета при сохранении/удалении клиента.
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<Account> accounts = new ArrayList<>();
 
+    public void setFin(String fin) {
+        this.fin = fin == null ? null : fin.trim().toUpperCase();
+    }
 
 }

@@ -22,8 +22,8 @@ public class  CustomerController {
 
     @PostMapping
     public ResponseEntity<Customer> createCustomer(@Valid @RequestBody CreateCustomerRequest createCustomerRequest) {
-        Customer created = customerService.createFromDTO(createCustomerRequest);
-        return new ResponseEntity<>(created, HttpStatus.CREATED);
+        Customer createdCustomer = customerService.createCustomer(createCustomerRequest);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdCustomer);
     }
 
     @GetMapping("/{id}")
@@ -39,15 +39,13 @@ public class  CustomerController {
 
     @PutMapping("/{id}")
     public ResponseEntity<Customer> updateCustomer(@PathVariable Long id, @Valid @RequestBody CreateCustomerRequest createCustomerRequest){
-        Customer updated = customerService.updateFromDTO(id, createCustomerRequest);
+        Customer updated = customerService.updateCustomerById(id, createCustomerRequest);
         return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteCustomer(@PathVariable Long id) {
-        String message = customerService.delete(id);
-        return ResponseEntity.ok(message);
+    public ResponseEntity<Void> deleteCustomer(@PathVariable Long id) {
+        customerService.deleteCustomerById(id);
+        return ResponseEntity.noContent().build();
     }
-
-
 }
