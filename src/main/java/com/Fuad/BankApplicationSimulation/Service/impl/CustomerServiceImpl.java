@@ -22,10 +22,13 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     public Customer createCustomer(CreateCustomerRequest createCustomerRequest) {
-        customerRepository.findByFinIgnoreCase(createCustomerRequest.getFin()).orElseThrow(() ->
-                new RuntimeException("Customer with FIN '" + createCustomerRequest.getFin() + "' already exists!"));
 
-       Customer customer = Customer.builder()
+        // Проверяем: существует ли клиент
+        if (customerRepository.findByFinIgnoreCase(createCustomerRequest.getFin()).isPresent()) {
+            throw new RuntimeException("Customer with FIN '" + createCustomerRequest.getFin() + "' already exists!");
+        }
+
+        Customer customer = Customer.builder()
                 .name(createCustomerRequest.getName())
                 .surname(createCustomerRequest.getSurname())
                 .phoneNumber(createCustomerRequest.getPhoneNumber())

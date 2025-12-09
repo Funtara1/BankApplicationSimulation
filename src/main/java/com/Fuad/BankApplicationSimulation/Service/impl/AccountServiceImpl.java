@@ -4,6 +4,7 @@ import com.Fuad.BankApplicationSimulation.DTO.AccountDTO.RequestDTO.CreateAccoun
 import com.Fuad.BankApplicationSimulation.Entity.Account;
 import com.Fuad.BankApplicationSimulation.Entity.Customer;
 import com.Fuad.BankApplicationSimulation.Enums.AccountStatus;
+import com.Fuad.BankApplicationSimulation.Enums.Currency;
 import com.Fuad.BankApplicationSimulation.Repository.AccountRepository;
 import com.Fuad.BankApplicationSimulation.Repository.CustomerRepository;
 import com.Fuad.BankApplicationSimulation.Service.AccountService;
@@ -23,24 +24,34 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional
     public Account createForCustomer(String fin, CreateAccountRequest request) {
-
+        // 1. Находим клиента
         Customer customer = customerRepository.findByFinIgnoreCase(fin)
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
 
-        // Создаём Account из DTO
+        // 2. Создаём аккаунт и связываем с клиентом
         Account account = new Account();
         account.setCurrency(request.getCurrency());
         account.setAccountStatus(AccountStatus.OPEN);
         account.setBalance(BigDecimal.ZERO);
-
-        // Связываем аккаунт с клиентом
-        customer.getAccounts().add(account);
         account.setCustomer(customer);
 
-        // Сохраняем каскадно
-        customerRepository.save(customer);
+        // Добавляем в список аккаунтов клиента для каскадного сохранения
+        customer.getAccounts().add(account);
 
-        return account;
+        // 3. Сохраняем аккаунт (или клиента, если каскад настроен)
+        accountRepository.save(account); // теперь account.getId() != null
+
+        // 4. Генерируем accountNumber на основе id и валюты
+        String generatedNumber = generateAccountNumber(account.getCurrency(), account.getId());
+        account.setAccountNumber(generatedNumber);
+
+        // 5. Сохраняем снова, чтобы записать accountNumber
+        return accountRepository.save(account);
+    }
+
+    private String generateAccountNumber(Currency currency, Long id) {
+        String paddedId = String.format("%08d", id); // 8 цифр с ведущими нулями
+        return currency.name() + paddedId;
     }
 
     @Override
