@@ -1,12 +1,9 @@
 package com.Fuad.BankApplicationSimulation.Entity;
 
-
 import com.Fuad.BankApplicationSimulation.Enums.TransactionStatus;
 import com.Fuad.BankApplicationSimulation.Enums.TransactionType;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -16,6 +13,8 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Transaction {
 
     @Id
@@ -28,6 +27,12 @@ public class Transaction {
 
     @Column(nullable = false)
     private BigDecimal amount;
+
+    @Column(nullable = false)
+    private BigDecimal oldBalance;
+
+    @Column(nullable = false)
+    private BigDecimal newBalance;  
 
     @Column(name = "timestamp", nullable = false)
     private LocalDateTime timestamp;
@@ -46,7 +51,6 @@ public class Transaction {
 
     @PrePersist
     public void prePersist() {
-        timestamp = LocalDateTime.now();
+        this.timestamp = LocalDateTime.now();
     }
 }
-
