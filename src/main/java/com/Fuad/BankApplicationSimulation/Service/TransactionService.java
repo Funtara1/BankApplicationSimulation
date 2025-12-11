@@ -1,5 +1,6 @@
 package com.Fuad.BankApplicationSimulation.Service;
 
+import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.Request.ResponseDTO.TransactionResponse;
 import com.Fuad.BankApplicationSimulation.Entity.Transaction;
 
 import java.math.BigDecimal;
@@ -13,7 +14,7 @@ public interface TransactionService {
 
     Transaction transfer(Long fromAccountId, Long toAccountId, BigDecimal amount);
 
-    List<Transaction> getTransactionsByAccountId(Long accountId);
+    List<TransactionResponse> getTransactionsByAccountId(Long accountId);
 
     Transaction getTransactionById(Long id);
 }
