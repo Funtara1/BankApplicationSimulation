@@ -1,6 +1,6 @@
 package com.Fuad.BankApplicationSimulation.Service;
 
-import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.Request.ResponseDTO.TransactionResponse;
+import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.ResponseDTO.TransactionResponse;
 import com.Fuad.BankApplicationSimulation.Entity.Transaction;
 
 import java.math.BigDecimal;

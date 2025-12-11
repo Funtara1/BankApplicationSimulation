@@ -1,9 +1,9 @@
 package com.Fuad.BankApplicationSimulation.Controller;
 
-import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.Request.RequestDTO.TransferRequest;
-import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.Request.RequestDTO.DepositRequest;
-import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.Request.RequestDTO.WithdrawRequest;
-import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.Request.ResponseDTO.TransactionResponse;
+import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.RequestDTO.TransferRequest;
+import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.RequestDTO.DepositRequest;
+import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.RequestDTO.WithdrawRequest;
+import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.ResponseDTO.TransactionResponse;
 import com.Fuad.BankApplicationSimulation.Entity.Transaction;
 import com.Fuad.BankApplicationSimulation.Service.TransactionService;
 import lombok.RequiredArgsConstructor;

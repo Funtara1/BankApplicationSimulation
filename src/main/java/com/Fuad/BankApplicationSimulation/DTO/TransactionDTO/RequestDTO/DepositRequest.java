@@ -1,4 +1,4 @@
-package com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.Request.RequestDTO;
+package com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.RequestDTO;
 
 import lombok.Getter;
 import lombok.Setter;

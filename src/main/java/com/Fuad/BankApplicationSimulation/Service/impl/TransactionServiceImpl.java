@@ -1,6 +1,6 @@
 package com.Fuad.BankApplicationSimulation.Service.impl;
 
-import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.Request.ResponseDTO.TransactionResponse;
+import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.ResponseDTO.TransactionResponse;
 import com.Fuad.BankApplicationSimulation.Entity.Account;
 import com.Fuad.BankApplicationSimulation.Entity.Transaction;
 import com.Fuad.BankApplicationSimulation.Enums.TransactionStatus;

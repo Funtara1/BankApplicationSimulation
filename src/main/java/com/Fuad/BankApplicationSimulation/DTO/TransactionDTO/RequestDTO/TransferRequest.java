@@ -1,4 +1,4 @@
-package com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.Request.RequestDTO;
+package com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.RequestDTO;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -7,7 +7,8 @@ import java.math.BigDecimal;
 
 @Getter
 @Setter
-public class WithdrawRequest {
+public class TransferRequest {
     private Long fromAccountId;
+    private Long toAccountId;
     private BigDecimal amount;
 }
