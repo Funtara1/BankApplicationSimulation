@@ -1,8 +1,9 @@
 package com.Fuad.BankApplicationSimulation.Controller;
 
-import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.Request.TransferRequest;
-import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.Request.DepositRequest;
-import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.Request.WithdrawRequest;
+import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.Request.RequestDTO.TransferRequest;
+import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.Request.RequestDTO.DepositRequest;
+import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.Request.RequestDTO.WithdrawRequest;
+import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.Request.ResponseDTO.TransactionResponse;
 import com.Fuad.BankApplicationSimulation.Entity.Transaction;
 import com.Fuad.BankApplicationSimulation.Service.TransactionService;
 import lombok.RequiredArgsConstructor;
@@ -51,11 +52,12 @@ public class TransactionController {
 
 
     @GetMapping("/account/{accountId}")
-    public ResponseEntity<List<Transaction>> getTransactions(@PathVariable Long accountId) {
+    public ResponseEntity<List<TransactionResponse>> getTransactions(@PathVariable Long accountId) {
         return ResponseEntity.ok(
                 transactionService.getTransactionsByAccountId(accountId)
         );
     }
+
 
 
     @GetMapping("/{id}")
