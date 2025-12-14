@@ -1,7 +1,6 @@
 package com.Fuad.BankApplicationSimulation.Entity;
 
-
-
+import com.Fuad.BankApplicationSimulation.Enums.CustomerStatus;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
@@ -23,10 +22,9 @@ public class Customer {
     private Long id;
 
     private String name;
-
     private String surname;
 
-    @Column(name = "phone_number",unique = true)
+    @Column(name = "phone_number", unique = true)
     private String phoneNumber;
 
     private String address;
@@ -34,8 +32,10 @@ public class Customer {
     @Column(unique = true)
     private String fin;
 
-    //orphanRemoval = true — удаляет счета, если они удалены из коллекции.
-    //cascade = CascadeType.ALL — автоматически сохраняет/удаляет счета при сохранении/удалении клиента.
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private CustomerStatus status = CustomerStatus.ACTIVE;
+
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<Account> accounts = new ArrayList<>();
@@ -43,5 +43,4 @@ public class Customer {
     public void setFin(String fin) {
         this.fin = fin == null ? null : fin.trim().toUpperCase();
     }
-
 }
