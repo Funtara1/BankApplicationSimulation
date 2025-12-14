@@ -1,7 +1,17 @@
 package com.Fuad.BankApplicationSimulation.Enums;
 
 public enum TransactionType {
-    DEPOSIT,
-    WITHDRAW,
-    MONEY_TRANSFER
+    DEPOSIT("Deposit"),
+    WITHDRAW("Withdraw"),
+    MONEY_TRANSFER("Transfer");
+
+    private final String description;
+
+    TransactionType(String description) {
+        this.description = description;
+    }
+
+    public String getDescription() {
+        return description;
+    }
 }
