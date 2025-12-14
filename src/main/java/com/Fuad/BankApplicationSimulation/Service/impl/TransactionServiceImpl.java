@@ -3,14 +3,14 @@ package com.Fuad.BankApplicationSimulation.Service.impl;
 import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.ResponseDTO.TransactionResponse;
 import com.Fuad.BankApplicationSimulation.Entity.Account;
 import com.Fuad.BankApplicationSimulation.Entity.Transaction;
-import com.Fuad.BankApplicationSimulation.Enums.TransactionStatus;
-import com.Fuad.BankApplicationSimulation.Enums.TransactionType;
+import com.Fuad.BankApplicationSimulation.Enums.*;
+import com.Fuad.BankApplicationSimulation.Exception.*;
 import com.Fuad.BankApplicationSimulation.Repository.AccountRepository;
 import com.Fuad.BankApplicationSimulation.Repository.TransactionRepository;
 import com.Fuad.BankApplicationSimulation.Service.TransactionService;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -18,157 +18,198 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class TransactionServiceImpl implements TransactionService {
 
-    private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
-
+    private final AccountRepository accountRepository;
+    private final TransactionAuditService auditService;
 
     @Override
-    @Transactional
     public Transaction deposit(Long toAccountId, BigDecimal amount) {
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Deposit amount must be positive");
+        validateAmount(amount);
+
+        Account toAccount = getAccountForUpdate(toAccountId);
+        checkCustomerIsActive(toAccount);
+
+        Transaction pending = auditService.createPending(TransactionType.DEPOSIT, amount);
+        auditService.attachAccounts(pending.getId(), null, toAccount);
+
+        try {
+            if (toAccount.getAccountStatus() == AccountStatus.CLOSED) {
+                throw new InvalidOperationException("Account is closed");
+            }
+
+            BigDecimal oldBalance = toAccount.getBalance();
+            BigDecimal newBalance = oldBalance.add(amount);
+
+            toAccount.setBalance(newBalance);
+            accountRepository.save(toAccount);
+
+            auditService.markCompletedDeposit(pending.getId(), oldBalance, newBalance);
+            return getTx(pending.getId());
+
+        } catch (RuntimeException ex) {
+            auditService.markFailed(pending.getId(), ex.getMessage());
+            throw ex;
         }
-
-        Account toAccount = getAccount(toAccountId);
-
-        BigDecimal oldBalance = toAccount.getBalance();
-        BigDecimal newBalance = oldBalance.add(amount);
-
-        toAccount.setBalance(newBalance);
-        accountRepository.save(toAccount);
-
-        Transaction transaction = new Transaction();
-        transaction.setTransactionType(TransactionType.DEPOSIT);
-        transaction.setAmount(amount);
-        transaction.setOldBalance(oldBalance);
-        transaction.setNewBalance(newBalance);
-        transaction.setToAccount(toAccount);
-        transaction.setTransactionStatus(TransactionStatus.COMPLETED);
-
-        return transactionRepository.save(transaction);
     }
 
-
     @Override
-    @Transactional
     public Transaction withdraw(Long fromAccountId, BigDecimal amount) {
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Withdraw amount must be positive");
+        validateAmount(amount);
+
+        Account fromAccount = getAccountForUpdate(fromAccountId);
+        checkCustomerIsActive(fromAccount);
+
+        Transaction pending = auditService.createPending(TransactionType.WITHDRAW, amount);
+        auditService.attachAccounts(pending.getId(), fromAccount, null);
+
+        try {
+            if (fromAccount.getAccountStatus() == AccountStatus.CLOSED) {
+                throw new InvalidOperationException("Account is closed");
+            }
+
+            if (fromAccount.getBalance().compareTo(amount) < 0) {
+                throw new InsufficientFundsException("Insufficient funds");
+            }
+
+            BigDecimal oldBalance = fromAccount.getBalance();
+            BigDecimal newBalance = oldBalance.subtract(amount);
+
+            fromAccount.setBalance(newBalance);
+            accountRepository.save(fromAccount);
+
+            auditService.markCompletedWithdraw(pending.getId(), oldBalance, newBalance);
+            return getTx(pending.getId());
+
+        } catch (RuntimeException ex) {
+            auditService.markFailed(pending.getId(), ex.getMessage());
+            throw ex;
         }
-
-        Account fromAccount = getAccount(fromAccountId);
-
-        if (fromAccount.getBalance().compareTo(amount) < 0) {
-            throw new IllegalArgumentException("Insufficient balance");
-        }
-
-        BigDecimal oldBalance = fromAccount.getBalance();
-        BigDecimal newBalance = oldBalance.subtract(amount);
-
-        fromAccount.setBalance(newBalance);
-        accountRepository.save(fromAccount);
-
-        Transaction transaction = Transaction.builder()
-                .transactionType(TransactionType.WITHDRAW)
-                .amount(amount)
-                .oldBalance(oldBalance)
-                .newBalance(newBalance)
-                .fromAccount(fromAccount)
-                .transactionStatus(TransactionStatus.COMPLETED)
-                .build();
-
-        return transactionRepository.save(transaction);
     }
 
-
     @Override
-    @Transactional
     public Transaction transfer(Long fromAccountId, Long toAccountId, BigDecimal amount) {
+        validateAmount(amount);
+
         if (fromAccountId.equals(toAccountId)) {
-            throw new IllegalArgumentException("You cannot transfer to the same account");
+            throw new BusinessException("Cannot transfer to the same account");
         }
 
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Transfer amount must be positive");
+        Long firstId = Math.min(fromAccountId, toAccountId);
+        Long secondId = Math.max(fromAccountId, toAccountId);
+
+        List<Account> accounts = accountRepository.findAllByIdForUpdate(List.of(firstId, secondId));
+
+        Account fromAccount = null;
+        Account toAccount = null;
+
+        for (Account acc : accounts) {
+            if (acc.getId().equals(fromAccountId)) fromAccount = acc;
+            if (acc.getId().equals(toAccountId)) toAccount = acc;
         }
 
-        Account fromAccount = getAccount(fromAccountId);
-        Account toAccount = getAccount(toAccountId);
-
-        if (fromAccount.getBalance().compareTo(amount) < 0) {
-            throw new IllegalArgumentException("Insufficient balance");
+        if (fromAccount == null || toAccount == null) {
+            throw new NotFoundException("Account not found");
         }
 
+        checkCustomerIsActive(fromAccount);
+        checkCustomerIsActive(toAccount);
 
-        BigDecimal fromOld = fromAccount.getBalance();
-        BigDecimal fromNew = fromOld.subtract(amount);
+        Transaction pending = auditService.createPending(TransactionType.MONEY_TRANSFER, amount);
+        auditService.attachAccounts(pending.getId(), fromAccount, toAccount);
 
-        BigDecimal toOld = toAccount.getBalance();
-        BigDecimal toNew = toOld.add(amount);
+        try {
+            if (fromAccount.getAccountStatus() == AccountStatus.CLOSED ||
+                    toAccount.getAccountStatus() == AccountStatus.CLOSED) {
+                throw new InvalidOperationException("Account is closed");
+            }
 
-        // Обновляем счета
-        fromAccount.setBalance(fromNew);
-        toAccount.setBalance(toNew);
-        accountRepository.save(fromAccount);
-        accountRepository.save(toAccount);
+            if (fromAccount.getBalance().compareTo(amount) < 0) {
+                throw new InsufficientFundsException("Insufficient funds");
+            }
 
-        Transaction transaction = new Transaction();
-        transaction.setTransactionType(TransactionType.MONEY_TRANSFER);
-        transaction.setAmount(amount);
-        transaction.setOldBalance(fromOld);
-        transaction.setNewBalance(fromNew);
-        transaction.setFromAccount(fromAccount);
-        transaction.setToAccount(toAccount);
-        transaction.setTransactionStatus(TransactionStatus.COMPLETED);
+            BigDecimal oldFrom = fromAccount.getBalance();
+            BigDecimal oldTo = toAccount.getBalance();
 
-        return transactionRepository.save(transaction);
+            BigDecimal newFrom = oldFrom.subtract(amount);
+            BigDecimal newTo = oldTo.add(amount);
+
+            fromAccount.setBalance(newFrom);
+            toAccount.setBalance(newTo);
+
+            accountRepository.save(fromAccount);
+            accountRepository.save(toAccount);
+
+            auditService.markCompletedTransfer(pending.getId(), oldFrom, newFrom, oldTo, newTo);
+            return getTx(pending.getId());
+
+        } catch (RuntimeException ex) {
+            auditService.markFailed(pending.getId(), ex.getMessage());
+            throw ex;
+        }
     }
 
-
     @Override
+    @Transactional(readOnly = true)
     public List<TransactionResponse> getTransactionsByAccountId(Long accountId) {
+        List<Transaction> transactions =
+                transactionRepository.findAllByFromAccountIdOrToAccountIdOrderByTimestampDesc(accountId, accountId);
 
-        List<Transaction> transactions = transactionRepository.findByAccountId(accountId);
-
-        List<TransactionResponse> responseList = new ArrayList<>();
+        List<TransactionResponse> responses = new ArrayList<>();
 
         for (Transaction t : transactions) {
-
-            TransactionResponse dto = new TransactionResponse();
-
-            dto.setDate(t.getTimestamp());
-            dto.setType(t.getTransactionType().name());
-            dto.setAmount(t.getAmount());
-            dto.setOldBalance(t.getOldBalance());
-            dto.setNewBalance(t.getNewBalance());
-
-            // fromAccount может быть null
-            if (t.getFromAccount() != null) {
-                dto.setFromAccount(t.getFromAccount().getAccountNumber());
-            }
-
-            // toAccount может быть null
-            if (t.getToAccount() != null) {
-                dto.setToAccount(t.getToAccount().getAccountNumber());
-            }
-
-            responseList.add(dto);
+            responses.add(toResponse(t));
         }
 
-        return responseList;
+        return responses;
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Transaction getTransactionById(Long id) {
-        return transactionRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
+        return getTx(id);
     }
 
+    private void checkCustomerIsActive(Account account) {
+        if (account.getCustomer() == null) {
+            throw new InvalidOperationException("Account has no customer");
+        }
+        if (account.getCustomer().getStatus() == CustomerStatus.CLOSED) {
+            throw new InvalidOperationException("Customer is closed");
+        }
+    }
 
-    private Account getAccount(Long id) {
-        return accountRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+    private Transaction getTx(Long id) {
+        return transactionRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Transaction not found"));
+    }
+
+    private Account getAccountForUpdate(Long id) {
+        return accountRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new NotFoundException("Account not found"));
+    }
+
+    private void validateAmount(BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException("Amount must be greater than zero");
+        }
+    }
+
+    private TransactionResponse toResponse(Transaction t) {
+        return TransactionResponse.builder()
+                .date(t.getTimestamp())
+                .type(t.getTransactionType().getDescription())
+                .amount(t.getAmount())
+                .oldBalance(t.getOldBalance())
+                .newBalance(t.getNewBalance())
+                .oldToBalance(t.getOldToBalance())
+                .newToBalance(t.getNewToBalance())
+                .fromAccount(t.getFromAccount() != null ? t.getFromAccount().getAccountNumber() : null)
+                .toAccount(t.getToAccount() != null ? t.getToAccount().getAccountNumber() : null)
+                .status(t.getTransactionStatus())
+                .reason(t.getErrorMessage())
+                .build();
     }
 }
