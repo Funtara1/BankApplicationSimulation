@@ -22,9 +22,8 @@ public class Account {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    //TODO: dobavit avto generaciyu v accountNumber
     @Column(name = "account_number", unique = true)
-    private String  accountNumber;
+    private String accountNumber;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "account_status")
@@ -44,3 +43,4 @@ public class Account {
 
 
 }
+
