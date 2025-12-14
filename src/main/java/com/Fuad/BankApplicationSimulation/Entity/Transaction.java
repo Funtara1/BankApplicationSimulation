@@ -28,11 +28,17 @@ public class Transaction {
     @Column(nullable = false)
     private BigDecimal amount;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private BigDecimal oldBalance;
 
-    @Column(nullable = false)
-    private BigDecimal newBalance;  
+    @Column(nullable = true)
+    private BigDecimal newBalance;
+
+    @Column(name = "old_to_balance", nullable = true)
+    private BigDecimal oldToBalance;
+
+    @Column(name = "new_to_balance", nullable = true)
+    private BigDecimal newToBalance;
 
     @Column(name = "timestamp", nullable = false)
     private LocalDateTime timestamp;
@@ -48,6 +54,9 @@ public class Transaction {
     @Enumerated(EnumType.STRING)
     @Column(name = "transaction_status")
     private TransactionStatus transactionStatus;
+
+    @Column(name = "error_message", length = 255)
+    private String errorMessage;
 
     @PrePersist
     public void prePersist() {
