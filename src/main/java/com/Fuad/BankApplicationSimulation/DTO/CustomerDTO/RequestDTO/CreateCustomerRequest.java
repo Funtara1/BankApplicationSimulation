@@ -26,10 +26,11 @@ public class CreateCustomerRequest {
     @Size(min = 7, max = 7)
     private String fin;
 
-    @NotBlank
-    @Size(max = 50)
-    //TODO: Ispravit pod AZ nomer
-    @Pattern(regexp = "\\+?[0-9]{10,15}", message = "Invalid phone number")
+    @NotBlank(message = "Phone number is required")
+    @Pattern(
+            regexp = "^\\+994(50|51|55|10|99|70|77|60)[1-9][0-9]{6}$",
+            message = "Phone number must be in AZ format: +994XXXXXXXXX"
+    )
     private String phoneNumber;
 
     @NotBlank
