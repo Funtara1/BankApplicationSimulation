@@ -1,7 +1,7 @@
 package com.Fuad.BankApplicationSimulation.Controller;
 
-import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.RequestDTO.TransferRequest;
 import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.RequestDTO.DepositRequest;
+import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.RequestDTO.TransferRequest;
 import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.RequestDTO.WithdrawRequest;
 import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.ResponseDTO.TransactionResponse;
 import com.Fuad.BankApplicationSimulation.Entity.Transaction;
@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
@@ -19,51 +20,51 @@ public class TransactionController {
 
     private final TransactionService transactionService;
 
-
     @PostMapping("/deposit")
-    public ResponseEntity<Transaction> deposit(@RequestBody DepositRequest request) {
-        Transaction result = transactionService.deposit(
-                request.getToAccountId(),
-                request.getAmount()
-        );
-        return ResponseEntity.ok(result);
+    public ResponseEntity<TransactionResponse> deposit(@Valid @RequestBody DepositRequest request) {
+        return ResponseEntity.ok(toResponse(
+                transactionService.deposit(request.getToAccountId(), request.getAmount())
+        ));
     }
-
 
     @PostMapping("/withdraw")
-    public ResponseEntity<Transaction> withdraw(@RequestBody WithdrawRequest request) {
-        Transaction result = transactionService.withdraw(
-                request.getFromAccountId(),
-                request.getAmount()
-        );
-        return ResponseEntity.ok(result);
+    public ResponseEntity<TransactionResponse> withdraw(@Valid @RequestBody WithdrawRequest request) {
+        return ResponseEntity.ok(toResponse(
+                transactionService.withdraw(request.getFromAccountId(), request.getAmount())
+        ));
     }
-
 
     @PostMapping("/transfer")
-    public ResponseEntity<Transaction> transfer(@RequestBody TransferRequest request) {
-        Transaction result = transactionService.transfer(
-                request.getFromAccountId(),
-                request.getToAccountId(),
-                request.getAmount()
-        );
-        return ResponseEntity.ok(result);
+    public ResponseEntity<TransactionResponse> transfer(@Valid @RequestBody TransferRequest request) {
+        return ResponseEntity.ok(toResponse(
+                transactionService.transfer(request.getFromAccountId(), request.getToAccountId(), request.getAmount())
+        ));
     }
-
 
     @GetMapping("/account/{accountId}")
     public ResponseEntity<List<TransactionResponse>> getTransactions(@PathVariable Long accountId) {
-        return ResponseEntity.ok(
-                transactionService.getTransactionsByAccountId(accountId)
-        );
+        return ResponseEntity.ok(transactionService.getTransactionsByAccountId(accountId));
     }
 
-
-
     @GetMapping("/{id}")
-    public ResponseEntity<Transaction> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(
-                transactionService.getTransactionById(id)
-        );
+    public ResponseEntity<TransactionResponse> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(toResponse(transactionService.getTransactionById(id)));
+    }
+
+    // TODO: Use mapper
+    private TransactionResponse toResponse(Transaction t) {
+        return TransactionResponse.builder()
+                .date(t.getTimestamp())
+                .type(t.getTransactionType().getDescription())
+                .amount(t.getAmount())
+                .oldBalance(t.getOldBalance())
+                .newBalance(t.getNewBalance())
+                .oldToBalance(t.getOldToBalance())
+                .newToBalance(t.getNewToBalance())
+                .fromAccount(t.getFromAccount() != null ? t.getFromAccount().getAccountNumber() : null)
+                .toAccount(t.getToAccount() != null ? t.getToAccount().getAccountNumber() : null)
+                .status(t.getTransactionStatus())
+                .reason(t.getErrorMessage())
+                .build();
     }
 }
