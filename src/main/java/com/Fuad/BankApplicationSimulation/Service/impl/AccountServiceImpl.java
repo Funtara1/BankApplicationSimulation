@@ -4,13 +4,16 @@ import com.Fuad.BankApplicationSimulation.DTO.AccountDTO.RequestDTO.CreateAccoun
 import com.Fuad.BankApplicationSimulation.Entity.Account;
 import com.Fuad.BankApplicationSimulation.Entity.Customer;
 import com.Fuad.BankApplicationSimulation.Enums.AccountStatus;
-import com.Fuad.BankApplicationSimulation.Enums.Currency;
+import com.Fuad.BankApplicationSimulation.Enums.CustomerStatus;
+import com.Fuad.BankApplicationSimulation.Exception.InvalidOperationException;
+import com.Fuad.BankApplicationSimulation.Exception.NotFoundException;
 import com.Fuad.BankApplicationSimulation.Repository.AccountRepository;
 import com.Fuad.BankApplicationSimulation.Repository.CustomerRepository;
 import com.Fuad.BankApplicationSimulation.Service.AccountService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -18,55 +21,67 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AccountServiceImpl implements AccountService {
 
-    private final CustomerRepository customerRepository;
     private final AccountRepository accountRepository;
+    private final CustomerRepository customerRepository;
 
     @Override
     @Transactional
     public Account createForCustomer(String fin, CreateAccountRequest request) {
-        // 1. Находим клиента
         Customer customer = customerRepository.findByFinIgnoreCase(fin)
-                .orElseThrow(() -> new RuntimeException("Customer not found"));
+                .orElseThrow(() -> new NotFoundException("Customer not found")); // TODO: fix this to duplicate
 
-        // 2. Создаём аккаунт и связываем с клиентом
+        if (customer.getStatus() == CustomerStatus.CLOSED) {
+            throw new InvalidOperationException("Customer is closed");
+        }
+
         Account account = new Account();
-        account.setCurrency(request.getCurrency());
-        account.setAccountStatus(AccountStatus.OPEN);
-        account.setBalance(BigDecimal.ZERO);
         account.setCustomer(customer);
+        account.setCurrency(request.getCurrency());
+        account.setBalance(BigDecimal.ZERO);
+        account.setAccountStatus(AccountStatus.OPEN);
 
-        // Добавляем в список аккаунтов клиента для каскадного сохранения
-        customer.getAccounts().add(account);
+        account = accountRepository.save(account);
 
-        // 3. Сохраняем аккаунт (или клиента, если каскад настроен)
-        accountRepository.save(account); // теперь account.getId() != null
+        String accountNumber = generateAccountNumber(account);
+        account.setAccountNumber(accountNumber);
 
-        // 4. Генерируем accountNumber на основе id и валюты
-        String generatedNumber = generateAccountNumber(account.getCurrency(), account.getId());
-        account.setAccountNumber(generatedNumber);
-
-        // 5. Сохраняем снова, чтобы записать accountNumber
         return accountRepository.save(account);
     }
 
-    private String generateAccountNumber(Currency currency, Long id) {
-        String paddedId = String.format("%08d", id); // 8 цифр с ведущими нулями
-        return currency.name() + paddedId;
+    @Override
+    @Transactional
+    public Account closeAccount(Long accountId) {
+        Account account = accountRepository.findByIdForUpdate(accountId)
+                .orElseThrow(() -> new NotFoundException("Account not found"));
+
+        if (account.getAccountStatus() == AccountStatus.CLOSED) {
+            throw new InvalidOperationException("Account is already closed");
+        }
+
+        if (account.getBalance().compareTo(BigDecimal.ZERO) != 0) {
+            throw new InvalidOperationException("Account balance must be zero to close");
+        }
+
+        account.setAccountStatus(AccountStatus.CLOSED);
+        return accountRepository.save(account);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Account getById(Long id) {
         return accountRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+                .orElseThrow(() -> new NotFoundException("Account not found"));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Account> getAllAccounts() {
         return accountRepository.findAll();
     }
 
-    @Override
-    public void delete(Long id) {
-        accountRepository.deleteById(id);
+    private String generateAccountNumber(Account account) {
+        String currency = account.getCurrency().name();
+        String paddedId = String.format("%08d", account.getId());
+        return currency + paddedId;
     }
 }
