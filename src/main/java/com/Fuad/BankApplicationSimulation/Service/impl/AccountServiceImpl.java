@@ -7,6 +7,8 @@ import com.Fuad.BankApplicationSimulation.Enums.AccountStatus;
 import com.Fuad.BankApplicationSimulation.Enums.CustomerStatus;
 import com.Fuad.BankApplicationSimulation.Exception.InvalidOperationException;
 import com.Fuad.BankApplicationSimulation.Exception.NotFoundException;
+import com.Fuad.BankApplicationSimulation.Exception.ValidationException;
+import com.Fuad.BankApplicationSimulation.Mapper.AccountMapper;
 import com.Fuad.BankApplicationSimulation.Repository.AccountRepository;
 import com.Fuad.BankApplicationSimulation.Repository.CustomerRepository;
 import com.Fuad.BankApplicationSimulation.Service.AccountService;
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -23,22 +26,33 @@ public class AccountServiceImpl implements AccountService {
 
     private final AccountRepository accountRepository;
     private final CustomerRepository customerRepository;
+    private final AccountMapper accountMapper;
 
     @Override
     @Transactional
     public Account createForCustomer(String fin, CreateAccountRequest request) {
+
         Customer customer = customerRepository.findByFinIgnoreCase(fin)
-                .orElseThrow(() -> new NotFoundException("Customer not found")); // TODO: fix this to duplicate
+                .orElseThrow(() -> new NotFoundException(
+                        "Customer not found",
+                        Map.of("fin", fin)
+                ));
 
         if (customer.getStatus() == CustomerStatus.CLOSED) {
-            throw new InvalidOperationException("Customer is closed");
+            throw new InvalidOperationException(
+                    "Cannot create account for closed customer",
+                    Map.of("customerStatus", customer.getStatus())
+            );
         }
 
-        Account account = new Account();
-        account.setCustomer(customer);
-        account.setCurrency(request.getCurrency());
-        account.setBalance(BigDecimal.ZERO);
-        account.setAccountStatus(AccountStatus.OPEN);
+        if (request.getCurrency() == null) {
+            throw new ValidationException(
+                    "Currency must be provided",
+                    Map.of("fin", fin)
+            );
+        }
+
+        Account account = accountMapper.toEntity(customer, request);
 
         account = accountRepository.save(account);
 
@@ -51,18 +65,31 @@ public class AccountServiceImpl implements AccountService {
     @Override
     @Transactional
     public Account closeAccount(Long accountId) {
+
         Account account = accountRepository.findByIdForUpdate(accountId)
-                .orElseThrow(() -> new NotFoundException("Account not found"));
+                .orElseThrow(() -> new NotFoundException(
+                        "Account not found",
+                        Map.of("accountId", accountId)
+                ));
 
         if (account.getAccountStatus() == AccountStatus.CLOSED) {
-            throw new InvalidOperationException("Account is already closed");
+            throw new InvalidOperationException(
+                    "Account is already closed",
+                    Map.of("accountId", accountId)
+            );
         }
 
         if (account.getBalance().compareTo(BigDecimal.ZERO) != 0) {
-            throw new InvalidOperationException("Account balance must be zero to close");
+            throw new ValidationException(
+                    "Account balance must be zero to close",
+                    Map.of(
+                            "accountId", accountId,
+                            "balance", account.getBalance()
+                    )
+            );
         }
 
-        account.setAccountStatus(AccountStatus.CLOSED);
+        accountMapper.close(account);
         return accountRepository.save(account);
     }
 
@@ -70,7 +97,10 @@ public class AccountServiceImpl implements AccountService {
     @Transactional(readOnly = true)
     public Account getById(Long id) {
         return accountRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Account not found"));
+                .orElseThrow(() -> new NotFoundException(
+                        "Account not found",
+                        Map.of("accountId", id)
+                ));
     }
 
     @Override
