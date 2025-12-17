@@ -5,9 +5,11 @@ import com.Fuad.BankApplicationSimulation.Entity.Account;
 import com.Fuad.BankApplicationSimulation.Entity.Customer;
 import com.Fuad.BankApplicationSimulation.Enums.AccountStatus;
 import com.Fuad.BankApplicationSimulation.Enums.CustomerStatus;
-import com.Fuad.BankApplicationSimulation.Exception.BusinessException;
+import com.Fuad.BankApplicationSimulation.Exception.DuplicateException;
 import com.Fuad.BankApplicationSimulation.Exception.InvalidOperationException;
 import com.Fuad.BankApplicationSimulation.Exception.NotFoundException;
+import com.Fuad.BankApplicationSimulation.Exception.ValidationException;
+import com.Fuad.BankApplicationSimulation.Mapper.CustomerMapper;
 import com.Fuad.BankApplicationSimulation.Repository.CustomerRepository;
 import com.Fuad.BankApplicationSimulation.Service.CustomerService;
 import lombok.RequiredArgsConstructor;
@@ -16,36 +18,37 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class CustomerServiceImpl implements CustomerService {
 
     private final CustomerRepository customerRepository;
+    private final CustomerMapper customerMapper;
 
     @Override
     @Transactional(readOnly = true)
     public Customer getCustomerById(Long id) {
         return customerRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Customer not found"));
+                .orElseThrow(() -> new NotFoundException(
+                        "Customer not found",
+                        Map.of("customerId", id)
+                ));
     }
 
     @Override
     @Transactional
     public Customer createCustomer(CreateCustomerRequest request) {
+
         if (customerRepository.existsByFinIgnoreCase(request.getFin())) {
-            throw new BusinessException("Customer with this FIN already exists");
+            throw new DuplicateException(
+                    "Customer with this FIN already exists",
+                    Map.of("fin", request.getFin())
+            );
         }
 
-        // TODO: MAPPER
-        Customer customer = Customer.builder()
-                .name(request.getName())
-                .surname(request.getSurname())
-                .phoneNumber(request.getPhoneNumber())
-                .address(request.getAddress())
-                .fin(request.getFin())
-                .status(CustomerStatus.ACTIVE)
-                .build();
+        Customer customer = customerMapper.toEntity(request);
 
         return customerRepository.save(customer);
     }
@@ -53,45 +56,52 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     @Transactional
     public Customer updateCustomerById(Long id, CreateCustomerRequest request) {
+
         Customer customer = getCustomerById(id);
 
         if (customer.getStatus() == CustomerStatus.CLOSED) {
-            throw new InvalidOperationException("Customer is closed");
+            throw new InvalidOperationException(
+                    "Cannot update closed customer",
+                    Map.of("customerId", id)
+            );
         }
 
-        customer.setName(request.getName());
-        customer.setSurname(request.getSurname());
-        customer.setPhoneNumber(request.getPhoneNumber());
-        customer.setAddress(request.getAddress());
-        customer.setFin(request.getFin());
-
+        customerMapper.updateEntity(customer, request);
         return customerRepository.save(customer);
     }
 
     @Override
     @Transactional
     public Customer closeCustomerById(Long id) {
+
         Customer customer = getCustomerById(id);
 
         if (customer.getStatus() == CustomerStatus.CLOSED) {
-            throw new InvalidOperationException("Customer already closed");
+            throw new InvalidOperationException(
+                    "Customer already closed",
+                    Map.of("customerId", id)
+            );
         }
 
-        List<Account> accounts = customer.getAccounts();
+        for (Account account : customer.getAccounts()) {
 
-        // TODO: OPTIMIZATION dva for obyedenit
-        for (Account account : accounts) {
-            if (account.getAccountStatus() == AccountStatus.OPEN) {
-                if (account.getBalance() != null && account.getBalance().compareTo(BigDecimal.ZERO) != 0) {
-                    throw new InvalidOperationException("Customer has open account with non-zero balance");
-                }
+            if (account.getAccountStatus() != AccountStatus.OPEN) {
+                continue;
             }
-        }
 
-        for (Account account : accounts) {
-            if (account.getAccountStatus() == AccountStatus.OPEN) {
-                account.setAccountStatus(AccountStatus.CLOSED);
+            BigDecimal balance = account.getBalance();
+            if (balance != null && balance.compareTo(BigDecimal.ZERO) != 0) {
+                throw new ValidationException(
+                        "Customer has open account with non-zero balance",
+                        Map.of(
+                                "customerId", id,
+                                "accountId", account.getId(),
+                                "balance", balance
+                        )
+                );
             }
+
+            account.setAccountStatus(AccountStatus.CLOSED);
         }
 
         customer.setStatus(CustomerStatus.CLOSED);
