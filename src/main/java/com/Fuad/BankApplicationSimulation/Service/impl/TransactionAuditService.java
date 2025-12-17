@@ -6,18 +6,21 @@ import com.Fuad.BankApplicationSimulation.Enums.TransactionStatus;
 import com.Fuad.BankApplicationSimulation.Enums.TransactionType;
 import com.Fuad.BankApplicationSimulation.Exception.NotFoundException;
 import com.Fuad.BankApplicationSimulation.Repository.TransactionRepository;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class TransactionAuditService {
 
     private final TransactionRepository transactionRepository;
+    private final EntityManager entityManager;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Transaction createPending(TransactionType type, BigDecimal amount) {
@@ -29,21 +32,21 @@ public class TransactionAuditService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void attachAccounts(Long txId, Account fromAccount, Account toAccount) {
+    public void attachAccounts(Long txId, Long fromAccountId, Long toAccountId) {
         Transaction tx = getTx(txId);
 
-        if (fromAccount != null) {
-            tx.setFromAccount(fromAccount);
+        if (fromAccountId != null) {
+            tx.setFromAccount(entityManager.getReference(Account.class, fromAccountId));
         }
-        if (toAccount != null) {
-            tx.setToAccount(toAccount);
+        if (toAccountId != null) {
+            tx.setToAccount(entityManager.getReference(Account.class, toAccountId));
         }
 
         transactionRepository.save(tx);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markCompletedDeposit(Long txId, BigDecimal oldBalance, BigDecimal newBalance) {
+    public void markCompletedSingle(Long txId, BigDecimal oldBalance, BigDecimal newBalance) {
         Transaction tx = getTx(txId);
         tx.setOldBalance(oldBalance);
         tx.setNewBalance(newBalance);
@@ -55,22 +58,11 @@ public class TransactionAuditService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markCompletedWithdraw(Long txId, BigDecimal oldBalance, BigDecimal newBalance) {
-        Transaction tx = getTx(txId);
-        tx.setOldBalance(oldBalance);
-        tx.setNewBalance(newBalance);
-        tx.setOldToBalance(null);
-        tx.setNewToBalance(null);
-        tx.setErrorMessage(null);
-        tx.setTransactionStatus(TransactionStatus.COMPLETED);
-        transactionRepository.save(tx);
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markCompletedTransfer(Long txId,
-                                      BigDecimal oldFrom, BigDecimal newFrom,
-                                      BigDecimal oldTo, BigDecimal newTo) {
-
+    public void markCompletedTransfer(
+            Long txId,
+            BigDecimal oldFrom, BigDecimal newFrom,
+            BigDecimal oldTo, BigDecimal newTo
+    ) {
         Transaction tx = getTx(txId);
         tx.setOldBalance(oldFrom);
         tx.setNewBalance(newFrom);
@@ -82,22 +74,29 @@ public class TransactionAuditService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markFailed(Long txId, String reason) {
+    public void markFailed(Long txId, Throwable error) {
         Transaction tx = getTx(txId);
         tx.setTransactionStatus(TransactionStatus.FAILED);
-        tx.setErrorMessage(shortReason(reason));
+        tx.setErrorMessage(shortReason(error));
         transactionRepository.save(tx);
-    }
-
-    private String shortReason(String reason) {
-        if (reason == null) return "Operation failed";
-        String r = reason.trim();
-        if (r.length() <= 255) return r;
-        return r.substring(0, 255);
     }
 
     private Transaction getTx(Long txId) {
         return transactionRepository.findById(txId)
-                .orElseThrow(() -> new NotFoundException("Transaction not found"));
+                .orElseThrow(() -> new NotFoundException(
+                        "Transaction not found",
+                        Map.of("transactionId", txId)
+                ));
+    }
+
+    private String shortReason(Throwable error) {
+        if (error == null) return "Operation failed";
+
+        String msg = error.getMessage();
+        String base = (msg == null || msg.trim().isEmpty())
+                ? error.getClass().getSimpleName()
+                : error.getClass().getSimpleName() + ": " + msg.trim();
+
+        return base.length() <= 255 ? base : base.substring(0, 255);
     }
 }
