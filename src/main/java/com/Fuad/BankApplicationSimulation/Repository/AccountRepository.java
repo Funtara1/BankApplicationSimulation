@@ -2,17 +2,14 @@ package com.Fuad.BankApplicationSimulation.Repository;
 
 import com.Fuad.BankApplicationSimulation.Entity.Account;
 import jakarta.persistence.QueryHint;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.jpa.repository.QueryHints;
+import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
 import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 
-public interface AccountRepository extends JpaRepository<Account, Long> {
+public interface AccountRepository extends JpaRepository<Account, Long>, JpaSpecificationExecutor<Account> {
 
     // TODO: Remove not used
     boolean existsByAccountNumber(String accountNumber);

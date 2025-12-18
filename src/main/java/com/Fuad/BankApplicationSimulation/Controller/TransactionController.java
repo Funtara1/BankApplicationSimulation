@@ -1,6 +1,7 @@
 package com.Fuad.BankApplicationSimulation.Controller;
 
 import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.RequestDTO.DepositRequest;
+import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.RequestDTO.TransactionFilterRequest;
 import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.RequestDTO.TransferRequest;
 import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.RequestDTO.WithdrawRequest;
 import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.ResponseDTO.TransactionResponse;
@@ -9,6 +10,8 @@ import com.Fuad.BankApplicationSimulation.Mapper.TransactionMapper;
 import com.Fuad.BankApplicationSimulation.Service.TransactionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -73,5 +76,14 @@ public class TransactionController {
     public ResponseEntity<TransactionResponse> getById(@PathVariable Long id) {
         Transaction tx = transactionService.getTransactionById(id);
         return ResponseEntity.ok(transactionMapper.toResponse(tx));
+    }
+
+    @GetMapping
+    public Page<TransactionResponse> filter(
+            @ParameterObject TransactionFilterRequest filter,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return transactionService.filter(filter, page, size);
     }
 }

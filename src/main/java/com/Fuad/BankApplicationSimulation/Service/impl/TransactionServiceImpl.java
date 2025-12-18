@@ -1,5 +1,6 @@
 package com.Fuad.BankApplicationSimulation.Service.impl;
 
+import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.RequestDTO.TransactionFilterRequest;
 import com.Fuad.BankApplicationSimulation.DTO.TransactionDTO.ResponseDTO.TransactionResponse;
 import com.Fuad.BankApplicationSimulation.Entity.Account;
 import com.Fuad.BankApplicationSimulation.Entity.Transaction;
@@ -12,8 +13,14 @@ import com.Fuad.BankApplicationSimulation.Mapper.TransactionMapper;
 import com.Fuad.BankApplicationSimulation.Repository.AccountRepository;
 import com.Fuad.BankApplicationSimulation.Repository.TransactionRepository;
 import com.Fuad.BankApplicationSimulation.Service.TransactionService;
+import com.Fuad.BankApplicationSimulation.Specification.TransactionSpecification;
 import com.Fuad.BankApplicationSimulation.Util.CurrencyConverter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -181,6 +188,38 @@ public class TransactionServiceImpl implements TransactionService {
     public Transaction getTransactionById(Long id) {
         return getTx(id);
     }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<TransactionResponse> filter(
+            TransactionFilterRequest filter,
+            int page,
+            int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        Specification<Transaction> specification =
+                Specification.where(TransactionSpecification.byAccount(filter.getAccountId()))
+                        .and(TransactionSpecification.typeEquals(filter.getType()))
+                        .and(TransactionSpecification.statusEquals(filter.getStatus()));
+
+        Page<Transaction> transactions =
+                transactionRepository.findAll(specification, pageable);
+
+        List<TransactionResponse> responses = new ArrayList<>();
+        for (Transaction t : transactions.getContent()) {
+            responses.add(transactionMapper.toResponse(t));
+        }
+
+        return new PageImpl<>(
+                responses,
+                pageable,
+                transactions.getTotalElements()
+        );
+    }
+
+
 
     private void validateAccountCanOperate(Account account) {
         if (account.getAccountStatus() == AccountStatus.CLOSED) {

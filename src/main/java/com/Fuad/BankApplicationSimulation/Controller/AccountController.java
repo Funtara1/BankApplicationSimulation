@@ -1,5 +1,6 @@
 package com.Fuad.BankApplicationSimulation.Controller;
 
+import com.Fuad.BankApplicationSimulation.DTO.AccountDTO.RequestDTO.AccountFilterRequest;
 import com.Fuad.BankApplicationSimulation.DTO.AccountDTO.RequestDTO.CreateAccountRequest;
 import com.Fuad.BankApplicationSimulation.DTO.AccountDTO.ResponseDTO.AccountResponse;
 import com.Fuad.BankApplicationSimulation.Entity.Account;
@@ -7,6 +8,8 @@ import com.Fuad.BankApplicationSimulation.Mapper.AccountMapper;
 import com.Fuad.BankApplicationSimulation.Service.AccountService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -41,22 +44,33 @@ public class AccountController {
         return ResponseEntity.ok(accountMapper.toResponse(account));
     }
 
-    @GetMapping
-    public ResponseEntity<List<AccountResponse>> getAllAccounts() {
-        List<Account> accounts = accountService.getAllAccounts();
-        List<AccountResponse> responses = new ArrayList<>();
-
-        //TODO mojno ispolzovat stream
-        for (Account account : accounts) {
-            responses.add(accountMapper.toResponse(account));
-        }
-
-        return ResponseEntity.ok(responses);
-    }
+    //TODO mojno udalit tak kak est filter metod
+//    @GetMapping
+//    public ResponseEntity<List<AccountResponse>> getAllAccounts() {
+//        List<Account> accounts = accountService.getAllAccounts();
+//        List<AccountResponse> responses = new ArrayList<>();
+//
+//        //TODO mojno ispolzovat stream
+//        for (Account account : accounts) {
+//            responses.add(accountMapper.toResponse(account));
+//        }
+//
+//        return ResponseEntity.ok(responses);
+//    }
 
     @PostMapping("/{id}/close")
     public ResponseEntity<AccountResponse> closeAccount(@PathVariable Long id) {
         Account account = accountService.closeAccount(id);
         return ResponseEntity.ok(accountMapper.toResponse(account));
     }
+
+    @GetMapping
+    public Page<AccountResponse> filter(
+            @ParameterObject AccountFilterRequest filter,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return accountService.filter(filter, page, size);
+    }
+
 }
