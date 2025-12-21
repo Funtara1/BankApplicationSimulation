@@ -1,0 +1,19 @@
+package com.fuad.bank.api.dto.AccountDTO.RequestDTO;
+
+import com.fuad.bank.domain.enums.Currency;
+import jakarta.validation.constraints.NotNull;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+
+
+@NoArgsConstructor
+@Getter
+@Setter
+public class CreateAccountRequest {
+
+    @NotNull
+    private Currency currency = Currency.AZN;
+
+}
