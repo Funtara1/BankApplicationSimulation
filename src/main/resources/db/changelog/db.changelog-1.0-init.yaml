@@ -1,0 +1,171 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1-create-customers-accounts-transactions
+      author: fuad
+      changes:
+        - createTable:
+            tableName: customers
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_customers
+              - column:
+                  name: name
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: surname
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: phone_number
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: address
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fin
+                  type: VARCHAR(7)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+
+        - createTable:
+            tableName: accounts
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_accounts
+              - column:
+                  name: account_number
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: account_status
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: balance
+                  type: NUMERIC(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: currency
+                  type: VARCHAR(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: customer_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: accounts
+            baseColumnNames: customer_id
+            constraintName: fk_accounts_customer
+            referencedTableName: customers
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+        - createTable:
+            tableName: transactions
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_transactions
+              - column:
+                  name: transaction_type
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount
+                  type: NUMERIC(19,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: old_balance
+                  type: NUMERIC(19,2)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: new_balance
+                  type: NUMERIC(19,2)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: old_to_balance
+                  type: NUMERIC(19,2)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: new_to_balance
+                  type: NUMERIC(19,2)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: timestamp
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_account_id
+                  type: BIGINT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: to_account_id
+                  type: BIGINT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: transaction_status
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: error_message
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: true
+
+        - addForeignKeyConstraint:
+            baseTableName: transactions
+            baseColumnNames: from_account_id
+            constraintName: fk_transactions_from_account
+            referencedTableName: accounts
+            referencedColumnNames: id
+            onDelete: SET NULL
+
+        - addForeignKeyConstraint:
+            baseTableName: transactions
+            baseColumnNames: to_account_id
+            constraintName: fk_transactions_to_account
+            referencedTableName: accounts
+            referencedColumnNames: id
+            onDelete: SET NULL

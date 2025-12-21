@@ -220,7 +220,6 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
 
-
     private void validateAccountCanOperate(Account account) {
         if (account.getAccountStatus() == AccountStatus.CLOSED) {
             throw new InvalidOperationException(

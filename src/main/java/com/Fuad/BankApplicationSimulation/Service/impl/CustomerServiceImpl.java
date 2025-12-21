@@ -15,7 +15,8 @@ import com.Fuad.BankApplicationSimulation.Mapper.CustomerMapper;
 import com.Fuad.BankApplicationSimulation.Repository.CustomerRepository;
 import com.Fuad.BankApplicationSimulation.Service.CustomerService;
 import com.Fuad.BankApplicationSimulation.Specification.CustomerSpecification;
-
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -39,6 +40,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "customers", key = "#id")
     public Customer getCustomerById(Long id) {
         return customerRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException(
@@ -65,6 +67,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "customers", key = "#id")
     public Customer updateCustomerById(Long id, CreateCustomerRequest request) {
 
         Customer customer = getCustomerById(id);
@@ -82,6 +85,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "customers", key = "#id")
     public Customer closeCustomerById(Long id) {
 
         Customer customer = getCustomerById(id);
@@ -123,7 +127,6 @@ public class CustomerServiceImpl implements CustomerService {
     public List<Customer> getAllCustomers() {
         return customerRepository.findAll();
     }
-
 
     @Override
     public Page<CustomerResponse> filter(CustomerFilterRequest filter, int page, int size) {
