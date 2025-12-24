@@ -21,10 +21,6 @@ public class AccountMapper {
         return account;
     }
 
-    public void close(Account account) {
-        account.setAccountStatus(AccountStatus.CLOSED);
-    }
-
     public AccountResponse toResponse(Account account) {
         if (account == null) {
             return null;

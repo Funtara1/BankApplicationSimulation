@@ -13,7 +13,6 @@ import lombok.Setter;
 @Setter
 public class CreateAccountRequest {
 
-    @NotNull
     private Currency currency = Currency.AZN;
 
 }

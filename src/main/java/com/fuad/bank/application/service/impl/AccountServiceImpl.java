@@ -3,6 +3,8 @@ package com.fuad.bank.application.service.impl;
 import com.fuad.bank.api.dto.AccountDTO.RequestDTO.AccountFilterRequest;
 import com.fuad.bank.api.dto.AccountDTO.RequestDTO.CreateAccountRequest;
 import com.fuad.bank.api.dto.AccountDTO.ResponseDTO.AccountResponse;
+import com.fuad.bank.api.mapper.AccountMapper;
+import com.fuad.bank.application.service.AccountService;
 import com.fuad.bank.domain.entity.Account;
 import com.fuad.bank.domain.entity.Customer;
 import com.fuad.bank.domain.enums.AccountStatus;
@@ -10,16 +12,11 @@ import com.fuad.bank.domain.enums.CustomerStatus;
 import com.fuad.bank.domain.exception.InvalidOperationException;
 import com.fuad.bank.domain.exception.NotFoundException;
 import com.fuad.bank.domain.exception.ValidationException;
-import com.fuad.bank.api.mapper.AccountMapper;
 import com.fuad.bank.infrastructure.persistence.repository.AccountRepository;
 import com.fuad.bank.infrastructure.persistence.repository.CustomerRepository;
-import com.fuad.bank.application.service.AccountService;
 import com.fuad.bank.infrastructure.persistence.specification.AccountSpecification;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,7 +59,6 @@ public class AccountServiceImpl implements AccountService {
         }
 
         Account account = accountMapper.toEntity(customer, request);
-
         account = accountRepository.save(account);
 
         String accountNumber = generateAccountNumber(account);
@@ -98,7 +94,7 @@ public class AccountServiceImpl implements AccountService {
             );
         }
 
-        accountMapper.close(account);
+        account.setAccountStatus(AccountStatus.CLOSED);
         return accountRepository.save(account);
     }
 
@@ -126,7 +122,6 @@ public class AccountServiceImpl implements AccountService {
                 accounts.getTotalElements()
         );
     }
-
 
     @Override
     @Transactional(readOnly = true)

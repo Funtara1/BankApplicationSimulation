@@ -12,9 +12,11 @@ import java.math.BigDecimal;
 public class TransferRequest {
 
     @NotNull
+    @Positive
     private Long fromAccountId;
 
     @NotNull
+    @Positive
     private Long toAccountId;
 
     @NotNull

@@ -23,7 +23,7 @@ public class CreateCustomerRequest {
     private String surname;
 
     @NotBlank
-    @Size(min = 7, max = 7)
+    @Pattern(regexp="^[A-Za-z0-9]{7}$", message="FIN must be 7 alphanumeric chars")
     private String fin;
 
     @NotBlank(message = "Phone number is required")

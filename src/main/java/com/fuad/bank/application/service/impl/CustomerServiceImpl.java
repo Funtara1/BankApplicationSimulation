@@ -3,6 +3,7 @@ package com.fuad.bank.application.service.impl;
 import com.fuad.bank.api.dto.CustomerDTO.RequestDTO.CreateCustomerRequest;
 import com.fuad.bank.api.dto.CustomerDTO.RequestDTO.CustomerFilterRequest;
 import com.fuad.bank.api.dto.CustomerDTO.ResponseDTO.CustomerResponse;
+import com.fuad.bank.api.mapper.CustomerMapper;
 import com.fuad.bank.application.service.CustomerService;
 import com.fuad.bank.domain.entity.Account;
 import com.fuad.bank.domain.entity.Customer;
@@ -12,18 +13,14 @@ import com.fuad.bank.domain.exception.DuplicateException;
 import com.fuad.bank.domain.exception.InvalidOperationException;
 import com.fuad.bank.domain.exception.NotFoundException;
 import com.fuad.bank.domain.exception.ValidationException;
-import com.fuad.bank.api.mapper.CustomerMapper;
 import com.fuad.bank.infrastructure.persistence.repository.CustomerRepository;
 import com.fuad.bank.infrastructure.persistence.specification.CustomerSpecification;
-import org.springframework.cache.annotation.Cacheable;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -61,7 +58,6 @@ public class CustomerServiceImpl implements CustomerService {
         }
 
         Customer customer = customerMapper.toEntity(request);
-
         return customerRepository.save(customer);
     }
 
@@ -79,7 +75,11 @@ public class CustomerServiceImpl implements CustomerService {
             );
         }
 
-        customerMapper.updateEntity(customer, request);
+        customer.setName(request.getName());
+        customer.setSurname(request.getSurname());
+        customer.setPhoneNumber(request.getPhoneNumber());
+        customer.setAddress(request.getAddress());
+
         return customerRepository.save(customer);
     }
 
@@ -129,6 +129,7 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<CustomerResponse> filter(CustomerFilterRequest filter, int page, int size) {
 
         Pageable pageable = PageRequest.of(page, size);
@@ -142,7 +143,6 @@ public class CustomerServiceImpl implements CustomerService {
         Page<Customer> customers = customerRepository.findAll(specification, pageable);
 
         List<CustomerResponse> responses = new ArrayList<>();
-
         for (Customer customer : customers.getContent()) {
             responses.add(customerMapper.toResponse(customer));
         }

@@ -21,14 +21,6 @@ public class CustomerMapper {
                 .build();
     }
 
-    public void updateEntity(Customer customer, CreateCustomerRequest dto) {
-        customer.setName(dto.getName());
-        customer.setSurname(dto.getSurname());
-        customer.setPhoneNumber(dto.getPhoneNumber());
-        customer.setAddress(dto.getAddress());
-        //customer.setFin(dto.getFin());  udalil logiku izmeneniya fin
-    }
-
     public CustomerResponse toResponse(Customer customer) {
         if (customer == null) {
             return null;
