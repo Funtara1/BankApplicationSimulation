@@ -2,6 +2,7 @@ package com.fuad.bank.application.service.impl;
 
 import com.fuad.bank.api.dto.TransactionDTO.RequestDTO.TransactionFilterRequest;
 import com.fuad.bank.api.dto.TransactionDTO.ResponseDTO.TransactionResponse;
+import com.fuad.bank.api.mapper.TransactionMapper;
 import com.fuad.bank.application.service.TransactionService;
 import com.fuad.bank.domain.entity.Account;
 import com.fuad.bank.domain.entity.Transaction;
@@ -10,11 +11,11 @@ import com.fuad.bank.domain.exception.InsufficientFundsException;
 import com.fuad.bank.domain.exception.InvalidOperationException;
 import com.fuad.bank.domain.exception.NotFoundException;
 import com.fuad.bank.domain.exception.ValidationException;
-import com.fuad.bank.api.mapper.TransactionMapper;
+import com.fuad.bank.domain.util.CurrencyConverter;
+import com.fuad.bank.infrastructure.messaging.TransactionEventPublisher;
 import com.fuad.bank.infrastructure.persistence.repository.AccountRepository;
 import com.fuad.bank.infrastructure.persistence.repository.TransactionRepository;
 import com.fuad.bank.infrastructure.persistence.specification.TransactionSpecification;
-import com.fuad.bank.domain.util.CurrencyConverter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -38,6 +39,7 @@ public class TransactionServiceImpl implements TransactionService {
     private final AccountRepository accountRepository;
     private final TransactionAuditService auditService;
     private final TransactionMapper transactionMapper;
+    private final TransactionEventPublisher eventPublisher;
 
     @Override
     public Transaction deposit(Long toAccountId, BigDecimal amount) {
@@ -57,10 +59,17 @@ public class TransactionServiceImpl implements TransactionService {
             accountRepository.save(toAccount);
 
             auditService.markCompletedSingle(pending.getId(), oldBalance, newBalance);
-            return getTx(pending.getId());
+
+            Transaction tx = getTx(pending.getId());
+            eventPublisher.publish(tx);
+            return tx;
 
         } catch (RuntimeException ex) {
             auditService.markFailed(pending.getId(), ex);
+
+            Transaction failedTx = getTx(pending.getId());
+            eventPublisher.publish(failedTx);
+
             throw ex;
         }
     }
@@ -93,10 +102,17 @@ public class TransactionServiceImpl implements TransactionService {
             accountRepository.save(fromAccount);
 
             auditService.markCompletedSingle(pending.getId(), oldBalance, newBalance);
-            return getTx(pending.getId());
+
+            Transaction tx = getTx(pending.getId());
+            eventPublisher.publish(tx);
+            return tx;
 
         } catch (RuntimeException ex) {
             auditService.markFailed(pending.getId(), ex);
+
+            Transaction failedTx = getTx(pending.getId());
+            eventPublisher.publish(failedTx);
+
             throw ex;
         }
     }
@@ -142,7 +158,6 @@ public class TransactionServiceImpl implements TransactionService {
             BigDecimal oldFrom = fromAccount.getBalance();
             BigDecimal oldTo = toAccount.getBalance();
 
-            // Naw Exchange
             BigDecimal convertedAmount = CurrencyConverter.convert(
                     amount,
                     fromAccount.getCurrency(),
@@ -162,10 +177,16 @@ public class TransactionServiceImpl implements TransactionService {
                     pending.getId(), oldFrom, newFrom, oldTo, newTo
             );
 
-            return getTx(pending.getId());
+            Transaction tx = getTx(pending.getId());
+            eventPublisher.publish(tx);
+            return tx;
 
         } catch (RuntimeException ex) {
             auditService.markFailed(pending.getId(), ex);
+
+            Transaction failedTx = getTx(pending.getId());
+            eventPublisher.publish(failedTx);
+
             throw ex;
         }
     }
@@ -188,7 +209,6 @@ public class TransactionServiceImpl implements TransactionService {
     public Transaction getTransactionById(Long id) {
         return getTx(id);
     }
-
 
     @Override
     @Transactional(readOnly = true)
@@ -218,7 +238,6 @@ public class TransactionServiceImpl implements TransactionService {
                 transactions.getTotalElements()
         );
     }
-
 
     private void validateAccountCanOperate(Account account) {
         if (account.getAccountStatus() == AccountStatus.CLOSED) {
@@ -264,8 +283,10 @@ public class TransactionServiceImpl implements TransactionService {
 
     private void validateAmount(BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new ValidationException("Amount must be greater than zero", Map.of("amount", amount));
+            throw new ValidationException(
+                    "Amount must be greater than zero",
+                    Map.of("amount", String.valueOf(amount))
+            );
         }
     }
-
 }
